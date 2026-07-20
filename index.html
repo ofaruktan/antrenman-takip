@@ -17,7 +17,7 @@
   input{font-size:16px!important;-webkit-appearance:none;border-radius:10px}
   button{-webkit-appearance:none;cursor:pointer}
   .safe-top{padding-top:env(safe-area-inset-top)}
-  .safe-bottom{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  .safe-bottom{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
   @keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
   @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -285,7 +285,7 @@ function renderHome(){
           </div>`).join("")}
       </div>
     </div>
-    <div class="safe-bottom" style="padding:18px 14px">
+    <div style="padding:18px 14px 90px 14px">
       <div style="font-weight:700;font-size:12px;color:#bbb;margin-bottom:12px;letter-spacing:1px">ANTRENMAN BAŞLAT</div>
       ${dayCards}
       <button id="export-btn" style="width:100%;margin-top:8px;padding:14px;background:#fff;color:#1a3a5c;border:2px solid #1a3a5c;border-radius:14px;font-size:16px;font-weight:700">
@@ -300,6 +300,7 @@ function renderHome(){
     el.addEventListener("touchend",()=>el.style.transform="scale(1)",{passive:true});
   });
   $("export-btn").addEventListener("click",()=>exportToExcel(appData));
+  bindNav("home");
 }
 
 // ─── WORKOUT ──────────────────────────────────────────────────────────────────
@@ -332,11 +333,11 @@ function renderWarmup(){
   const done=workoutState.warmupDone;
   document.getElementById("root").innerHTML=`
     <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+20px) 20px 24px;color:#fff">
-      <button onclick="currentScreen='home';renderHome()" style="background:none;border:none;color:#fff;font-size:24px;margin-bottom:8px">‹</button>
+      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:24px;margin-bottom:8px">‹</button>
       <div style="font-size:24px;font-weight:800">🔥 Isınma</div>
       <div style="font-size:13px;opacity:0.8">${day.day} · ${day.label} · ~8 dakika</div>
     </div>
-    <div class="safe-bottom" style="padding:20px 16px">
+    <div style="padding:20px 16px 90px 16px">
       <div style="font-size:13px;color:#999;margin-bottom:14px">Her adımı tamamladıkça işaretle 👇</div>
       ${steps.map((s,i)=>`
         <div class="warmup-step" data-idx="${i}" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;border:2px solid ${done[i]?"#27ae60":"#f0e6c8"};opacity:${done[i]?0.65:1};transition:all 0.2s">
@@ -357,6 +358,7 @@ function renderWarmup(){
     });
   });
   $("warmup-next-btn").addEventListener("click",()=>{workoutState.phase="training";renderTraining();});
+  bindNav("workout");
 }
 
 function renderTraining(){
@@ -432,7 +434,7 @@ function renderTraining(){
   }).join("");
 
   document.getElementById("root").innerHTML=`
-    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+18px) 20px 22px;color:#fff;position:sticky;top:0;z-index:5">
+    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+18px) 20px 22px;color:#fff;position:sticky;top:0;z-index:10">
       <div style="font-size:13px;opacity:0.8">${day.day} antrenmanı</div>
       <div style="font-size:26px;font-weight:800">${day.icon} ${day.label}</div>
       <div style="font-size:13px;opacity:0.75;margin-bottom:14px">${day.subtitle}</div>
@@ -441,7 +443,7 @@ function renderTraining(){
       </div>
       <div style="margin-top:6px;font-size:13px;opacity:0.9">${doneCount}/${day.exercises.length} egzersiz</div>
     </div>
-    <div class="safe-bottom" style="padding:14px 14px 0">
+    <div style="padding:14px 14px 90px 14px">
       ${cards}
       <button id="goto-cooldown" ${doneCount===0?"disabled":""} style="width:100%;padding:16px;margin-top:8px;background:${doneCount>0?day.color:"#ccc"};color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700">
         Soğumaya Geç (${doneCount}/${day.exercises.length}) →
@@ -480,6 +482,7 @@ function renderTraining(){
   });
   const coolBtn=$("goto-cooldown");
   if(coolBtn&&doneCount>0)coolBtn.addEventListener("click",()=>{workoutState.phase="cooldown";renderCooldown();});
+  bindNav("workout");
 }
 
 function renderCooldown(){
@@ -492,7 +495,7 @@ function renderCooldown(){
       <div style="font-size:24px;font-weight:800">❄️ Soğuma</div>
       <div style="font-size:13px;opacity:0.8">~6 dakika</div>
     </div>
-    <div class="safe-bottom" style="padding:20px 16px">
+    <div style="padding:20px 16px 90px 16px">
       ${workoutState.newPRs.length>0?`
         <div style="background:#fff9f0;border:2px solid #f39c12;border-radius:16px;padding:16px;margin-bottom:16px">
           <div style="font-weight:700;color:#e67e22;margin-bottom:6px">🏆 Yeni Kişisel Rekor!</div>
@@ -519,6 +522,7 @@ function renderCooldown(){
   $("finish-btn").addEventListener("click",()=>{
     finishWorkout();
   });
+  bindNav("workout");
 }
 
 function finishWorkout(){
@@ -611,7 +615,7 @@ function renderProgress(){
       <div style="color:#999;font-size:14px;margin-bottom:16px">Son ağırlıklar · PRlar</div>
     </div>
     <div style="display:flex;gap:8px;padding:0 16px 16px;overflow-x:auto">${tabsHTML}</div>
-    <div style="padding:0 16px 80px">
+    <div style="padding:0 16px 90px">
       <div style="background:#fff;border-radius:14px;overflow:hidden;margin-bottom:12px">
         <div style="padding:12px 16px;background:${day.color};color:#fff;font-weight:700;font-size:13px">Son Kaydedilen Ağırlıklar</div>
         ${lastWeightsHTML}
@@ -632,6 +636,7 @@ function renderProgress(){
       renderProgress();
     });
   });
+  bindNav("progress");
 }
 
 // ─── HISTORY ──────────────────────────────────────────────────────────────────
@@ -664,15 +669,16 @@ function renderHistory(){
       <div style="font-weight:800;font-size:22px;margin-bottom:2px">📋 Geçmiş</div>
       <div style="color:#999;font-size:14px;margin-bottom:18px">${appData.sessions?.length||0} antrenman kaydı</div>
     </div>
-    <div class="safe-bottom" style="padding:0 16px">${html}</div>
+    <div style="padding:0 16px 90px 16px">${html}</div>
     ${renderNav("history")}
   `;
+  bindNav("history");
 }
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
 function renderNav(active){
   const tabs=[{id:"home",icon:"🏠",label:"Ana Sayfa"},{id:"progress",icon:"📈",label:"Gelişim"},{id:"history",icon:"📋",label:"Geçmiş"}];
-  return `<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #f0f0f0;display:flex;padding:8px 0;padding-bottom:calc(8px + env(safe-area-inset-bottom));z-index:20">
+  return `<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #f0f0f0;display:flex;padding:8px 0;padding-bottom:calc(12px + env(safe-area-inset-bottom));z-index:100">
     ${tabs.map(t=>`<div class="nav-btn" data-id="${t.id}" style="flex:1;text-align:center;cursor:pointer">
       <div style="font-size:24px">${t.icon}</div>
       <div style="font-size:11px;color:${active===t.id?"#2e6da4":"#bbb"};font-weight:${active===t.id?700:400}">${t.label}</div>
@@ -681,14 +687,21 @@ function renderNav(active){
 }
 
 function bindEvents(){
+  bindNav(currentScreen);
+}
+function bindNav(active){
+  currentScreen=active;
   document.querySelectorAll(".nav-btn").forEach(el=>{
     el.addEventListener("click",()=>{
-      currentScreen=el.dataset.id;
-      if(currentScreen==="home")renderHome();
-      else if(currentScreen==="progress")renderProgress();
-      else if(currentScreen==="history")renderHistory();
+      const id=el.dataset.id;
+      if(id==="home")renderHome();
+      else if(id==="progress")renderProgress();
+      else if(id==="history")renderHistory();
     });
   });
+  // Geri butonu
+  const backBtn=$("back-btn");
+  if(backBtn)backBtn.addEventListener("click",()=>renderHome());
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
