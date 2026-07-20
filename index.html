@@ -332,8 +332,12 @@ function renderWarmup(){
   const steps=WARMUP_STEPS[workoutState.dayKey];
   const done=workoutState.warmupDone;
   document.getElementById("root").innerHTML=`
-    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+20px) 20px 24px;color:#fff">
-      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:24px;margin-bottom:8px">‹</button>
+    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:${day.color};padding:calc(env(safe-area-inset-top)+8px) 16px 8px;display:flex;align-items:center;gap:12px">
+      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:28px;padding:4px 8px;cursor:pointer">‹</button>
+      <span style="color:#fff;font-weight:700;font-size:16px;opacity:0.9">${day.icon} ${day.label}</span>
+    </div>
+    <div style="height:calc(env(safe-area-inset-top)+52px)"></div>
+    <div style="background:${day.color};padding:16px 20px 24px;color:#fff">
       <div style="font-size:24px;font-weight:800">🔥 Isınma</div>
       <div style="font-size:13px;opacity:0.8">${day.day} · ${day.label} · ~8 dakika</div>
     </div>
@@ -362,6 +366,7 @@ function renderWarmup(){
 }
 
 function renderTraining(){
+  // fixed back bar training'de de göster
   const day=PROGRAM[workoutState.dayKey];
   const doneCount=workoutState.completed.filter(Boolean).length;
   const pct=Math.round((doneCount/day.exercises.length)*100);
@@ -434,9 +439,13 @@ function renderTraining(){
   }).join("");
 
   document.getElementById("root").innerHTML=`
-    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+18px) 20px 22px;color:#fff;position:sticky;top:0;z-index:10">
+    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:${day.color};padding:calc(env(safe-area-inset-top)+8px) 16px 8px;display:flex;align-items:center;gap:12px">
+      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:28px;padding:4px 8px;cursor:pointer">‹</button>
+      <span style="color:#fff;font-weight:700;font-size:16px">${day.icon} ${day.label}</span>
+    </div>
+    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+52px) 20px 22px;color:#fff;position:sticky;top:0;z-index:10">
       <div style="font-size:13px;opacity:0.8">${day.day} antrenmanı</div>
-      <div style="font-size:26px;font-weight:800">${day.icon} ${day.label}</div>
+      <div style="font-size:24px;font-weight:800">${day.icon} ${day.label}</div>
       <div style="font-size:13px;opacity:0.75;margin-bottom:14px">${day.subtitle}</div>
       <div style="background:rgba(255,255,255,0.25);border-radius:10px;height:8px">
         <div style="height:8px;border-radius:10px;background:#fff;width:${pct}%;transition:width 0.4s ease"></div>
@@ -490,10 +499,14 @@ function renderCooldown(){
   const steps=COOLDOWN_STEPS[workoutState.dayKey];
   const done=workoutState.cooldownDone;
   document.getElementById("root").innerHTML=`
-    <div style="background:#2e6da4;padding:calc(env(safe-area-inset-top)+20px) 20px 24px;color:#fff">
+    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:#2e6da4;padding:calc(env(safe-area-inset-top)+8px) 16px 8px;display:flex;align-items:center;gap:12px">
+      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:28px;padding:4px 8px;cursor:pointer">‹</button>
+      <span style="color:#fff;font-weight:700;font-size:16px">❄️ Soğuma</span>
+    </div>
+    <div style="height:calc(env(safe-area-inset-top)+52px)"></div>
+    <div style="background:#2e6da4;padding:16px 20px 24px;color:#fff">
       <div style="font-size:13px;opacity:0.8">${day.label} · Antrenman Bitti ✓</div>
       <div style="font-size:24px;font-weight:800">❄️ Soğuma</div>
-      <div style="font-size:13px;opacity:0.8">~6 dakika</div>
     </div>
     <div style="padding:20px 16px 90px 16px">
       ${workoutState.newPRs.length>0?`
