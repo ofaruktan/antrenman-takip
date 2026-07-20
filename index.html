@@ -332,11 +332,7 @@ function renderWarmup(){
   const steps=WARMUP_STEPS[workoutState.dayKey];
   const done=workoutState.warmupDone;
   document.getElementById("root").innerHTML=`
-    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:${day.color};padding:calc(env(safe-area-inset-top)+8px) 16px 8px;display:flex;align-items:center;gap:12px">
-      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:28px;padding:4px 8px;cursor:pointer">‹</button>
-      <span style="color:#fff;font-weight:700;font-size:16px;opacity:0.9">${day.icon} ${day.label}</span>
-    </div>
-    <div style="height:calc(env(safe-area-inset-top)+52px)"></div>
+    
     <div style="background:${day.color};padding:16px 20px 24px;color:#fff">
       <div style="font-size:24px;font-weight:800">🔥 Isınma</div>
       <div style="font-size:13px;opacity:0.8">${day.day} · ${day.label} · ~8 dakika</div>
@@ -439,71 +435,7 @@ function renderTraining(){
   }).join("");
 
   document.getElementById("root").innerHTML=`
-    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:${day.color};padding:calc(env(safe-area-inset-top)+8px) 16px 8px;display:flex;align-items:center;gap:12px">
-      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:28px;padding:4px 8px;cursor:pointer">‹</button>
-      <span style="color:#fff;font-weight:700;font-size:16px">${day.icon} ${day.label}</span>
-    </div>
-    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+52px) 20px 22px;color:#fff;position:sticky;top:0;z-index:10">
-      <div style="font-size:13px;opacity:0.8">${day.day} antrenmanı</div>
-      <div style="font-size:24px;font-weight:800">${day.icon} ${day.label}</div>
-      <div style="font-size:13px;opacity:0.75;margin-bottom:14px">${day.subtitle}</div>
-      <div style="background:rgba(255,255,255,0.25);border-radius:10px;height:8px">
-        <div style="height:8px;border-radius:10px;background:#fff;width:${pct}%;transition:width 0.4s ease"></div>
-      </div>
-      <div style="margin-top:6px;font-size:13px;opacity:0.9">${doneCount}/${day.exercises.length} egzersiz</div>
-    </div>
-    <div style="padding:14px 14px 90px 14px">
-      ${cards}
-      <button id="goto-cooldown" ${doneCount===0?"disabled":""} style="width:100%;padding:16px;margin-top:8px;background:${doneCount>0?day.color:"#ccc"};color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700">
-        Soğumaya Geç (${doneCount}/${day.exercises.length}) →
-      </button>
-    </div>
-    ${renderNav("workout")}
-  `;
-
-  document.querySelectorAll(".ex-header").forEach(el=>{
-    el.addEventListener("click",()=>{
-      const i=parseInt(el.dataset.idx);
-      workoutState.activeEx=workoutState.activeEx===i?-1:i;
-      renderTraining();
-    });
-  });
-  document.querySelectorAll("input[data-exidx]").forEach(inp=>{
-    inp.addEventListener("input",e=>{
-      const ei=parseInt(inp.dataset.exidx),si=parseInt(inp.dataset.setidx),f=inp.dataset.field;
-      workoutState.sets[ei][si][f]=inp.value;
-    });
-  });
-  document.querySelectorAll(".complete-btn").forEach(btn=>{
-    if(!btn.disabled)btn.addEventListener("click",()=>{
-      const i=parseInt(btn.dataset.idx);
-      const ex=day.exercises[i];
-      const maxW=Math.max(...workoutState.sets[i].map(s=>parseFloat(s.weight)||0));
-      if(maxW>(workoutState.prs[ex.id]||0)){
-        workoutState.prs[ex.id]=maxW;
-        workoutState.newPRs.push(`${ex.name} — ${maxW}kg`);
-      }
-      workoutState.completed[i]=true;
-      if(i<day.exercises.length-1)workoutState.activeEx=i+1;
-      renderTraining();
-      setTimeout(()=>startTimer(ex.rest,()=>{}),100);
-    });
-  });
-  const coolBtn=$("goto-cooldown");
-  if(coolBtn&&doneCount>0)coolBtn.addEventListener("click",()=>{workoutState.phase="cooldown";renderCooldown();});
-  bindNav("workout");
-}
-
-function renderCooldown(){
-  const day=PROGRAM[workoutState.dayKey];
-  const steps=COOLDOWN_STEPS[workoutState.dayKey];
-  const done=workoutState.cooldownDone;
-  document.getElementById("root").innerHTML=`
-    <div style="position:fixed;top:0;left:0;right:0;z-index:50;background:#2e6da4;padding:calc(env(safe-area-inset-top)+8px) 16px 8px;display:flex;align-items:center;gap:12px">
-      <button id="back-btn" style="background:none;border:none;color:#fff;font-size:28px;padding:4px 8px;cursor:pointer">‹</button>
-      <span style="color:#fff;font-weight:700;font-size:16px">❄️ Soğuma</span>
-    </div>
-    <div style="height:calc(env(safe-area-inset-top)+52px)"></div>
+    
     <div style="background:#2e6da4;padding:16px 20px 24px;color:#fff">
       <div style="font-size:13px;opacity:0.8">${day.label} · Antrenman Bitti ✓</div>
       <div style="font-size:24px;font-weight:800">❄️ Soğuma</div>
@@ -690,8 +622,13 @@ function renderHistory(){
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
 function renderNav(active){
+  const isWorkout=active==="workout";
   const tabs=[{id:"home",icon:"🏠",label:"Ana Sayfa"},{id:"progress",icon:"📈",label:"Gelişim"},{id:"history",icon:"📋",label:"Geçmiş"}];
   return `<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #f0f0f0;display:flex;padding:8px 0;padding-bottom:calc(12px + env(safe-area-inset-bottom));z-index:100">
+    <div id="back-btn" style="flex:1;text-align:center;cursor:pointer;opacity:${isWorkout?1:0.3}">
+      <div style="font-size:24px">‹</div>
+      <div style="font-size:11px;color:${isWorkout?"#c0392b":"#bbb"};font-weight:${isWorkout?700:400}">Geri</div>
+    </div>
     ${tabs.map(t=>`<div class="nav-btn" data-id="${t.id}" style="flex:1;text-align:center;cursor:pointer">
       <div style="font-size:24px">${t.icon}</div>
       <div style="font-size:11px;color:${active===t.id?"#2e6da4":"#bbb"};font-weight:${active===t.id?700:400}">${t.label}</div>
@@ -712,9 +649,13 @@ function bindNav(active){
       else if(id==="history")renderHistory();
     });
   });
-  // Geri butonu
+  // Geri butonu sadece workout'ta aktif
   const backBtn=$("back-btn");
-  if(backBtn)backBtn.addEventListener("click",()=>renderHome());
+  if(backBtn){
+    if(active==="workout"){
+      backBtn.addEventListener("click",()=>renderHome());
+    }
+  }
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
