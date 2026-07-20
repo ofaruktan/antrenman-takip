@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Antrenman"/>
+<meta name="theme-color" content="#1a3a5c"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<title>Antrenman Takip</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:#f7f8fa;overscroll-behavior:none}
+  input{font-size:16px!important;-webkit-appearance:none;border-radius:10px}
+  button{-webkit-appearance:none;cursor:pointer}
+  .safe-top{padding-top:env(safe-area-inset-top)}
+  .safe-bottom{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  @keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .slide-up{animation:slideUp 0.3s ease}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+// ─── PROGRAM DATA ─────────────────────────────────────────────────────────────
+const WARMUP_STEPS = {
+  push: ["3dk koşu bandı 5.5 hız yürüyüş","Arm circle öne-arkaya 10×2","Band pull-apart 15 tekrar","Scapular push-up 10 tekrar","Bench Press ısınma seti (%50, 15 tekrar)"],
+  pull: ["3dk bisiklet level 3","Band pull-apart 15 tekrar","Cat-cow 10 tekrar","Shoulder dislocate band 10 tekrar","Lat Pulldown ısınma seti (%50, 15 tekrar)"],
+  legs: ["3dk koşu bandı 5.5 hız","Glute bridge 10 tekrar","BW Squat 15 tekrar","Leg swing öne-arkaya 10×2","Hip circle 10×2","Leg Press ısınma seti (%50, 15 tekrar)"],
+  optional: ["2dk bisiklet hafif","Arm circle 10×2","Band pull-apart 15 tekrar","Face pull ısınma (çok hafif, 15 tekrar)","Dead bug 5 tekrar yavaş"],
+};
+const COOLDOWN_STEPS = {
+  push: ["Göğüs açılımı kapı kasısında 40sn","Tricep overhead stretch her kol 30sn","Omuz karşı çapraz çekme her kol 30sn","Derin nefes 1dk"],
+  pull: ["Lat stretch (direğe tutunarak öne eğil) 40sn","Bicep duvar stretchi her kol 30sn","Cat-cow 10 tekrar","Boyun yan eğme her taraf 20sn"],
+  legs: ["Ayakta quad stretch her bacak 35sn","Duvara yaslanarak hamstring stretch 40sn","Figür-4 kalça açılımı her taraf 40sn","Baldır duvar stretchi 30sn"],
+  optional: ["Omuz kapı stretchi her taraf 30sn","Boyun yan eğme 20sn × 2","Child's pose 45sn","Derin diyafram nefesi 1dk"],
+};
+const PROGRAM = {
+  push:{label:"PUSH",subtitle:"Göğüs · Omuz · Triceps",day:"Salı",color:"#c0392b",colorLight:"#fadbd8",icon:"💪",
+    exercises:[
+      {id:"bench",name:"Barbell Bench Press",sets:4,reps:"8-10",rest:90,emg:"100%",note:"Bar göğse değsin, dirsek 45°"},
+      {id:"incline_db",name:"Incline Dumbbell Press",sets:3,reps:"10-12",rest:75,emg:"95%",note:"30° açı — üst göğüs, tam ROM"},
+      {id:"pec_deck",name:"Pec Deck Machine",sets:3,reps:"12-15",rest:45,emg:"98%",note:"Kontraksiyonda 1sn tut"},
+      {id:"db_shoulder",name:"DB Shoulder Press",sets:3,reps:"10-12",rest:75,emg:"Yüksek",note:"Oturarak — sırt düz"},
+      {id:"lateral",name:"Lateral Raise",sets:3,reps:"15",rest:45,emg:"30% MVIC",note:"Dirsek hafif bükük, sallamak yok"},
+      {id:"arnold_press",name:"Arnold Press",sets:3,reps:"10-12",rest:60,emg:"Yüksek",note:"Avuç içi sana dönük başla, dışa dönerek it — tam rotasyon"},
+      {id:"rope_facepull_push",name:"Rope Face Pull",sets:3,reps:"15",rest:45,emg:"Yüksek",note:"Dirsek omuz hizasında, dışa döndür — arka omuz dengesi"},
+      {id:"pushdown",name:"Cable Pushdown",sets:3,reps:"12-15",rest:45,emg:"Yüksek",note:"Dirsek sabit, bilek dönme yok"},
+      {id:"rope_pushdown",name:"Cable Rope Pushdown",sets:3,reps:"15",rest:45,emg:"Orta-Yüksek",note:"Sonda ip uçlarını dışa aç"},
+    ]},
+  pull:{label:"PULL",subtitle:"Sırt · Biceps",day:"Perşembe",color:"#1a6b9a",colorLight:"#d6eaf8",icon:"🔵",
+    exercises:[
+      {id:"lat_pulldown",name:"Lat Pulldown (geniş)",sets:3,reps:"12",rest:75,emg:"90%",note:"Bar üst göğse — lat ile çek"},
+      {id:"cable_row",name:"Cable Row (dar tutuş)",sets:3,reps:"12",rest:60,emg:"92%",note:"Omuz bıçakları sıkış"},
+      {id:"barbell_row",name:"Barbell Row",sets:3,reps:"10-12",rest:90,emg:"95%",note:"Sırt düz — bar göbeğe çekil, bel nötr"},
+      {id:"rope_pullover",name:"Cable Rope Pullover",sets:3,reps:"12-15",rest:45,emg:"Yüksek",note:"Lat stretchte başla — sırt çekiyor"},
+      {id:"barbell_curl",name:"Barbell Curl",sets:3,reps:"12",rest:60,emg:"Yüksek",note:"Dirsek sabit — tam ekstensiyon"},
+      {id:"hammer_curl",name:"Hammer Curl",sets:3,reps:"12",rest:45,emg:"Orta-Yüksek",note:"Nötr bilek pozisyonu"},
+      {id:"cable_curl",name:"Cable Curl",sets:3,reps:"15",rest:45,emg:"Orta",note:"Kontraksiyonda 1sn tut"},
+    ]},
+  legs:{label:"LEGS",subtitle:"Bacak · Kalça · Baldır",day:"Cumartesi",color:"#196f3d",colorLight:"#d5f5e3",icon:"🟢",
+    exercises:[
+      {id:"squat",name:"Barbell Squat",sets:4,reps:"8-10",rest:120,emg:"100%",note:"Derin in — diz ayak üzerinde"},
+      {id:"leg_press",name:"Leg Press",sets:3,reps:"12",rest:90,emg:"95%",note:"Ayak orta-geniş — tam ROM"},
+      {id:"walking_lunge",name:"Walking Lunge",sets:3,reps:"10/bacak",rest:60,emg:"Yüksek",note:"DB ile — diz zemine yaklaşsın"},
+      {id:"rdl",name:"Romanian Deadlift",sets:3,reps:"10-12",rest:90,emg:"98%",note:"Bel nötr — hamstring gerimi hissedince dur"},
+      {id:"leg_curl",name:"Leg Curl",sets:3,reps:"12",rest:60,emg:"98%",note:"Full ROM — kontrollü indir"},
+      {id:"hip_thrust_machine",name:"Hip Thrust (makine)",sets:3,reps:"12-15",rest:60,emg:"En Yüksek",note:"Tepede 2sn sıkış — makine stabil, ağırlık kontrollü artır"},
+      {id:"seated_calf",name:"Seated Calf Raise",sets:4,reps:"15-20",rest:30,emg:"Orta-Yüksek",note:"Diz 90° — soleus odaklı, topuk tam aşağı"},
+    ]},
+  optional:{label:"BONUS",subtitle:"Omuz · Core",day:"Pazar",color:"#7d6608",colorLight:"#fef9e7",icon:"⭐",
+    exercises:[
+      {id:"ohp",name:"Overhead Press",sets:3,reps:"10-12",rest:90,emg:"Yüksek",note:"Core sıkı — bel eğilme"},
+      {id:"face_pull",name:"Face Pull",sets:3,reps:"15",rest:45,emg:"Orta-Yüksek",note:"Dirsek omuz hizasında"},
+      {id:"cable_lateral",name:"Cable Lateral Raise",sets:3,reps:"15",rest:45,emg:"30% MVIC",note:"Sürekli gerilim"},
+      {id:"plank",name:"Plank",sets:3,reps:"30-60sn",rest:30,emg:"Yüksek",note:"Kalça düşme yok"},
+      {id:"leg_raise",name:"Hanging Leg Raise",sets:3,reps:"10",rest:45,emg:"Yüksek",note:"Alt karın çalışıyor"},
+      {id:"woodchop",name:"Cable Wood Chop",sets:3,reps:"12/yön",rest:30,emg:"Orta",note:"Her iki yönde"},
+      {id:"dead_bug",name:"Dead Bug",sets:3,reps:"10/taraf",rest:30,emg:"Yüksek",note:"Bel yere değsin"},
+    ]},
+};
+
+// ─── STORAGE ──────────────────────────────────────────────────────────────────
+const OLD_KEYS = ["antrenman_v1","antrenman_v2","antrenman_v3"];
+const KEY = "antrenman_v3";
+function loadData(){
+  try{
+    let m={history:{},sessions:[],prs:{}};
+    OLD_KEYS.forEach(k=>{
+      try{
+        const r=localStorage.getItem(k); if(!r)return;
+        const d=JSON.parse(r);
+        if(d.history)Object.entries(d.history).forEach(([id,entries])=>{
+          if(!m.history[id])m.history[id]=[];
+          entries.forEach(e=>{if(!m.history[id].some(x=>x.date===e.date))m.history[id].push(e);});
+          m.history[id].sort((a,b)=>new Date(a.date)-new Date(b.date));
+          if(m.history[id].length>30)m.history[id]=m.history[id].slice(-30);
+        });
+        if(d.sessions)d.sessions.forEach(s=>{if(!m.sessions.some(x=>x.date===s.date&&x.dayKey===s.dayKey))m.sessions.push(s);});
+        if(d.prs)Object.entries(d.prs).forEach(([id,pr])=>{if(!m.prs[id]||pr>m.prs[id])m.prs[id]=pr;});
+      }catch{}
+    });
+    m.sessions.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    localStorage.setItem(KEY,JSON.stringify(m));
+    return m;
+  }catch{return{history:{},sessions:[],prs:{}};}
+}
+function saveData(d){try{localStorage.setItem(KEY,JSON.stringify(d));}catch{}}
+function getLastWeight(h,id){const e=(h[id]||[]);if(!e.length)return null;const m=Math.max(...e[e.length-1].sets.map(s=>parseFloat(s.weight)||0));return m>0?m:null;}
+function getLastSets(h,id){const e=(h[id]||[]);return e.length?e[e.length-1].sets:null;}
+function fmtDate(iso){if(!iso)return"";return new Date(iso).toLocaleDateString("tr-TR",{day:"numeric",month:"short"});}
+function fmtDateFull(iso){if(!iso)return"";return new Date(iso).toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"});}
+
+// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function exportToExcel(data){
+  const wb = XLSX.utils.book_new();
+  const allEx = Object.values(PROGRAM).flatMap(d=>d.exercises);
+
+  // Sayfa 1: İlerleme Takibi (orijinal formata uygun)
+  const ilerlemeData = [
+    ["İLERLEME TAKİP - 12 HAFTA"],
+    ["Hafta","Tarih","Kilo(kg)","Bel(cm)","Göbek(cm)","Göğüs(cm)","Kol(cm)","Bacak(cm)","Yağ%","Notlar"],
+    ["BAŞLANGIÇ","31.05.2026",72.6,"","","","","",17.1,"InBody ölçümü"],
+  ];
+  for(let i=1;i<=12;i++) ilerlemeData.push([`Hafta ${i}`,"","","","","","","","",""]);
+  ilerlemeData.push(["HEDEF","","70","","","","","","15","Kas artışı + yağ yakımı"]);
+  const ws1 = XLSX.utils.aoa_to_sheet(ilerlemeData);
+  ws1['!cols'] = [{wch:14},{wch:14},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:8},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws1, "İlerleme Takibi");
+
+  // Sayfa 2: Antrenman Geçmişi (seans bazlı)
+  const gecmisRows = [
+    ["TARİH","GÜN","TAMAMLANAN","TOPLAM","TAMAMLANMA %"]
+  ];
+  (data.sessions||[]).forEach(s=>{
+    const d=PROGRAM[s.dayKey];
+    gecmisRows.push([
+      fmtDateFull(s.date),
+      `${d?.icon||""} ${d?.label||s.dayKey}`,
+      s.completedCount, s.totalCount,
+      Math.round((s.completedCount/s.totalCount)*100)+"%"
+    ]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(gecmisRows);
+  ws2['!cols'] = [{wch:20},{wch:16},{wch:14},{wch:10},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws2, "Seans Geçmişi");
+
+  // Sayfa 3: Egzersiz Bazlı Ağırlık Geçmişi
+  const agirlikRows = [
+    ["EGZERSİZ","GRUP","TARİH","SET 1 (kg×rep)","SET 2 (kg×rep)","SET 3 (kg×rep)","SET 4 (kg×rep)","MAKS KG","KİŞİSEL REKOR"]
+  ];
+  Object.entries(PROGRAM).forEach(([dayKey,day])=>{
+    day.exercises.forEach(ex=>{
+      const entries = data.history[ex.id]||[];
+      if(!entries.length) return;
+      entries.forEach(entry=>{
+        const sets = entry.sets||[];
+        const maxKg = Math.max(...sets.map(s=>parseFloat(s.weight)||0));
+        const pr = data.prs[ex.id]||0;
+        agirlikRows.push([
+          ex.name,
+          day.label,
+          fmtDateFull(entry.date),
+          sets[0]?`${sets[0].weight}kg×${sets[0].reps}`:"",
+          sets[1]?`${sets[1].weight}kg×${sets[1].reps}`:"",
+          sets[2]?`${sets[2].weight}kg×${sets[2].reps}`:"",
+          sets[3]?`${sets[3].weight}kg×${sets[3].reps}`:"",
+          maxKg>0?maxKg:"",
+          maxKg>=pr&&maxKg>0?"🏆 PR":""
+        ]);
+      });
+    });
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(agirlikRows);
+  ws3['!cols'] = [{wch:28},{wch:8},{wch:20},{wch:14},{wch:14},{wch:14},{wch:14},{wch:10},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws3, "Ağırlık Geçmişi");
+
+  // Sayfa 4: Kişisel Rekorlar
+  const prRows = [["EGZERSİZ","GRUP","KİŞİSEL REKOR (kg)"]];
+  Object.entries(data.prs||{}).forEach(([id,pr])=>{
+    const ex=allEx.find(e=>e.id===id);
+    const day=Object.entries(PROGRAM).find(([,d])=>d.exercises.some(e=>e.id===id));
+    if(ex)prRows.push([ex.name, day?.[1]?.label||"", pr]);
+  });
+  const ws4 = XLSX.utils.aoa_to_sheet(prRows);
+  ws4['!cols'] = [{wch:28},{wch:10},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws4, "Kişisel Rekorlar");
+
+  const tarih = new Date().toLocaleDateString("tr-TR").replace(/\./g,"-");
+  XLSX.writeFile(wb, `Antrenman_Gecmisi_${tarih}.xlsx`);
+}
+
+// ─── RENDER HELPERS ───────────────────────────────────────────────────────────
+let appData = loadData();
+let currentScreen = "home";
+let activeDay = null;
+let workoutState = null;
+let timerInterval = null;
+let timerLeft = 0;
+let celebratePRs = [];
+
+function $(id){return document.getElementById(id);}
+function render(html){document.getElementById("root").innerHTML=html; bindEvents();}
+
+// ─── TIMER ────────────────────────────────────────────────────────────────────
+function startTimer(seconds, onDone){
+  if(timerInterval)clearInterval(timerInterval);
+  timerLeft = seconds;
+  showTimer(seconds, onDone);
+  timerInterval = setInterval(()=>{
+    timerLeft--;
+    const el=$("timer-count");
+    const circle=$("timer-circle");
+    if(el)el.textContent=timerLeft;
+    if(circle){
+      const pct=timerLeft/seconds;
+      const c=2*Math.PI*80;
+      circle.style.strokeDashoffset=c*(1-pct);
+      circle.style.stroke=timerLeft>20?"#27ae60":timerLeft>10?"#e67e22":"#e74c3c";
+    }
+    if(timerLeft<=0){clearInterval(timerInterval);hideTimer();if(onDone)onDone();}
+  },1000);
+}
+function showTimer(seconds, onDone){
+  const overlay=document.createElement("div");
+  overlay.id="timer-overlay";
+  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;";
+  overlay.innerHTML=`
+    <div style="color:#fff;font-size:17px;margin-bottom:16px;opacity:0.7">Dinlenme süresi</div>
+    <svg width="180" height="180" viewBox="0 0 180 180">
+      <circle cx="90" cy="90" r="80" fill="none" stroke="#333" stroke-width="10"/>
+      <circle id="timer-circle" cx="90" cy="90" r="80" fill="none" stroke="#27ae60" stroke-width="10"
+        stroke-dasharray="${2*Math.PI*80}" stroke-dashoffset="0" stroke-linecap="round"
+        style="transform:rotate(-90deg);transform-origin:90px 90px;transition:stroke-dashoffset 1s linear,stroke 0.5s"/>
+      <text id="timer-count" x="90" y="98" text-anchor="middle" fill="#fff" font-size="42" font-weight="700" font-family="monospace">${seconds}</text>
+    </svg>
+    <div style="color:#aaa;font-size:13px;margin-top:12px">Sıradaki set için hazırlan</div>
+    <button onclick="hideTimer()" style="margin-top:20px;background:transparent;border:2px solid #555;color:#aaa;border-radius:12px;padding:10px 28px;font-size:15px;">Atla</button>
+  `;
+  document.body.appendChild(overlay);
+}
+window.hideTimer=function(){
+  clearInterval(timerInterval);
+  const o=$("timer-overlay");
+  if(o)o.remove();
+};
+
+// ─── HOME ─────────────────────────────────────────────────────────────────────
+function renderHome(){
+  const weekDone=(appData.sessions||[]).filter(s=>new Date(s.date)>new Date(Date.now()-7*24*3600*1000)).length;
+  const prCount=Object.keys(appData.prs||{}).length;
+  const totalSessions=appData.sessions?.length||0;
+
+  const dayCards=Object.entries(PROGRAM).map(([key,day])=>{
+    const last=[...(appData.sessions||[])].reverse().find(s=>s.dayKey===key);
+    const isOpt=key==="optional";
+    return `<div class="day-card" data-day="${key}" style="background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);cursor:pointer;opacity:${isOpt?0.88:1}">
+      <div style="width:52px;height:52px;border-radius:14px;background:${day.colorLight};display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">${day.icon}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:800;font-size:18px;color:${day.color}">${day.label}</span>
+          ${isOpt?'<span style="font-size:11px;background:#fef9e7;color:#e67e22;padding:2px 8px;border-radius:20px;font-weight:600">Opsiyonel</span>':''}
+        </div>
+        <div style="font-size:13px;color:#777">${day.subtitle} · ${day.exercises.length} egzersiz</div>
+        <div style="font-size:12px;color:#bbb;margin-top:2px">${last?`Son: ${fmtDate(last.date)}`:"Henüz yapılmadı"} · ${day.day}</div>
+      </div>
+      <div style="color:#ddd;font-size:24px">›</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("root").innerHTML=`
+    <div class="safe-top" style="background:linear-gradient(135deg,#1a3a5c 0%,#2e6da4 100%);padding:32px 20px 28px;color:#fff">
+      <div style="font-size:27px;font-weight:900;letter-spacing:-0.5px">Antrenman Takip</div>
+      <div style="font-size:13px;opacity:0.75;margin-top:3px">PPL Split · Salı / Perşembe / Cumartesi</div>
+      <div style="margin-top:16px;display:flex;gap:12px">
+        ${[["Bu hafta",weekDone],["Toplam",totalSessions],["PR",prCount]].map(([l,v])=>`
+          <div style="background:rgba(255,255,255,0.15);border-radius:12px;padding:12px 0;flex:1;text-align:center">
+            <div style="font-size:28px;font-weight:800">${v}</div>
+            <div style="font-size:11px;opacity:0.8">${l}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+    <div class="safe-bottom" style="padding:18px 14px">
+      <div style="font-weight:700;font-size:12px;color:#bbb;margin-bottom:12px;letter-spacing:1px">ANTRENMAN BAŞLAT</div>
+      ${dayCards}
+      <button id="export-btn" style="width:100%;margin-top:8px;padding:14px;background:#fff;color:#1a3a5c;border:2px solid #1a3a5c;border-radius:14px;font-size:16px;font-weight:700">
+        📊 Excel'e Aktar
+      </button>
+    </div>
+    ${renderNav("home")}
+  `;
+  document.querySelectorAll(".day-card").forEach(el=>{
+    el.addEventListener("click",()=>startWorkout(el.dataset.day));
+    el.addEventListener("touchstart",()=>el.style.transform="scale(0.98)",{passive:true});
+    el.addEventListener("touchend",()=>el.style.transform="scale(1)",{passive:true});
+  });
+  $("export-btn").addEventListener("click",()=>exportToExcel(appData));
+}
+
+// ─── WORKOUT ──────────────────────────────────────────────────────────────────
+function startWorkout(dayKey){
+  activeDay=dayKey;
+  const day=PROGRAM[dayKey];
+  workoutState={
+    dayKey, phase:"warmup",
+    sets: day.exercises.map(ex=>Array.from({length:ex.sets},()=>({weight:"",reps:""}))),
+    completed: new Array(day.exercises.length).fill(false),
+    activeEx: 0,
+    warmupDone: new Array(WARMUP_STEPS[dayKey].length).fill(false),
+    cooldownDone: new Array(COOLDOWN_STEPS[dayKey].length).fill(false),
+    prs: {...appData.prs},
+    newPRs: [],
+  };
+  renderWorkout();
+}
+
+function renderWorkout(){
+  if(!workoutState)return;
+  if(workoutState.phase==="warmup")renderWarmup();
+  else if(workoutState.phase==="training")renderTraining();
+  else if(workoutState.phase==="cooldown")renderCooldown();
+}
+
+function renderWarmup(){
+  const day=PROGRAM[workoutState.dayKey];
+  const steps=WARMUP_STEPS[workoutState.dayKey];
+  const done=workoutState.warmupDone;
+  document.getElementById("root").innerHTML=`
+    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+20px) 20px 24px;color:#fff">
+      <button onclick="currentScreen='home';renderHome()" style="background:none;border:none;color:#fff;font-size:24px;margin-bottom:8px">‹</button>
+      <div style="font-size:24px;font-weight:800">🔥 Isınma</div>
+      <div style="font-size:13px;opacity:0.8">${day.day} · ${day.label} · ~8 dakika</div>
+    </div>
+    <div class="safe-bottom" style="padding:20px 16px">
+      <div style="font-size:13px;color:#999;margin-bottom:14px">Her adımı tamamladıkça işaretle 👇</div>
+      ${steps.map((s,i)=>`
+        <div class="warmup-step" data-idx="${i}" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;border:2px solid ${done[i]?"#27ae60":"#f0e6c8"};opacity:${done[i]?0.65:1};transition:all 0.2s">
+          <div style="width:30px;height:30px;border-radius:50%;background:${done[i]?"#27ae60":"#f39c12"};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0">${done[i]?"✓":i+1}</div>
+          <span style="font-size:14px;color:#444;text-decoration:${done[i]?"line-through":"none"}">${s}</span>
+        </div>`).join("")}
+      <button id="warmup-next-btn" style="width:100%;margin-top:12px;padding:16px;background:${done.every(Boolean)?day.color:"#888"};color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700">
+        ${done.every(Boolean)?"Isınma Tamam — Başla 💪":"Atla ve Başla →"}
+      </button>
+    </div>
+    ${renderNav("workout")}
+  `;
+  document.querySelectorAll(".warmup-step").forEach(el=>{
+    el.addEventListener("click",()=>{
+      const i=parseInt(el.dataset.idx);
+      workoutState.warmupDone[i]=!workoutState.warmupDone[i];
+      renderWarmup();
+    });
+  });
+  $("warmup-next-btn").addEventListener("click",()=>{workoutState.phase="training";renderTraining();});
+}
+
+function renderTraining(){
+  const day=PROGRAM[workoutState.dayKey];
+  const doneCount=workoutState.completed.filter(Boolean).length;
+  const pct=Math.round((doneCount/day.exercises.length)*100);
+
+  const cards=day.exercises.map((ex,i)=>{
+    const isActive=workoutState.activeEx===i;
+    const isDone=workoutState.completed[i];
+    const lw=getLastWeight(appData.history,ex.id);
+    const ls=getLastSets(appData.history,ex.id);
+    const sets=workoutState.sets[i];
+    const curMax=Math.max(...sets.map(s=>parseFloat(s.weight)||0));
+    const isPRBeaten=curMax>(workoutState.prs[ex.id]||0)&&curMax>0;
+    const hasPR=(workoutState.prs[ex.id]||0)>0;
+
+    const setsHTML=isActive?sets.map((s,si)=>{
+      const prevW=ls?.[si]?.weight||lw||"";
+      const prevR=ls?.[si]?.reps||"";
+      const isSPR=s.weight!==""&&parseFloat(s.weight)>(workoutState.prs[ex.id]||0);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0">
+        <div style="width:28px;height:28px;border-radius:50%;background:${isSPR?"#fef3e2":"#f0f0f0"};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${isSPR?"#e67e22":"#666"};flex-shrink:0">${si+1}</div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:#bbb;margin-bottom:4px">${prevW?`Son: ${prevW}kg × ${prevR}`:"İlk kayıt"}</div>
+          <div style="display:flex;gap:8px">
+            <div style="position:relative;flex:1">
+              <input type="number" inputmode="decimal" placeholder="${prevW||'kg'}" value="${s.weight}"
+                data-exidx="${i}" data-setidx="${si}" data-field="weight"
+                style="width:100%;padding:11px 28px 11px 12px;font-size:17px;font-weight:700;border:2px solid ${isSPR?"#f39c12":"#e8e8e8"};border-radius:10px;background:${isSPR?"#fff9f0":"#fafafa"}"/>
+              <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:11px;color:#bbb">kg</span>
+            </div>
+            <div style="position:relative;flex:1">
+              <input type="number" inputmode="numeric" placeholder="${prevR||'rep'}" value="${s.reps}"
+                data-exidx="${i}" data-setidx="${si}" data-field="reps"
+                style="width:100%;padding:11px 28px 11px 12px;font-size:17px;font-weight:700;border:2px solid #e8e8e8;border-radius:10px;background:#fafafa"/>
+              <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:11px;color:#bbb">rep</span>
+            </div>
+          </div>
+        </div>
+        ${isSPR?'<div style="font-size:22px">🏆</div>':""}
+      </div>`;
+    }).join(""):"";
+
+    const allFilled=sets.every(s=>s.weight!==""&&s.reps!=="");
+
+    return `<div style="background:#fff;border-radius:16px;margin-bottom:10px;border:2px solid ${isActive?"#2e6da4":isDone?"#27ae60":"#f0f0f0"};overflow:hidden">
+      <div class="ex-header" data-idx="${i}" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:${isDone?"#f0fff4":"#fff"}">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:15px;color:#1a1a1a">${ex.name}</span>
+            ${hasPR?`<span style="background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">PR ${workoutState.prs[ex.id]}kg 🏆</span>`:""}
+          </div>
+          <div style="font-size:12px;color:#999;margin-top:2px">${ex.sets} set × ${ex.reps}${lw?`<span style="color:#2e6da4;margin-left:8px;font-weight:600">↑ Son: ${lw}kg</span>`:""}</div>
+          <div style="font-size:11px;color:#bbb;margin-top:1px">${ex.note}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${isDone?'<span style="font-size:18px">✅</span>':""}
+          <span style="font-size:20px;transition:transform 0.2s;transform:${isActive?"rotate(180deg)":"none"};color:#ccc">⌄</span>
+        </div>
+      </div>
+      ${isActive?`<div style="padding:0 16px 16px">
+        <div style="border-top:1px solid #f5f5f5;padding-top:10px">${setsHTML}</div>
+        ${isPRBeaten?`<div style="background:#fff9f0;border:1px solid #f39c12;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:13px;color:#e67e22;font-weight:600">🏆 Yeni PR kırıyorsun! (${curMax}kg)</div>`:""}
+        <button class="complete-btn" data-idx="${i}" ${!allFilled?"disabled":""} style="width:100%;margin-top:12px;padding:14px;background:${allFilled?"#27ae60":"#e8e8e8"};color:${allFilled?"#fff":"#bbb"};border:none;border-radius:12px;font-size:16px;font-weight:700">
+          ${isDone?"✓ Güncellendi":"Egzersizi Tamamla ✓"}
+        </button>
+      </div>`:""}
+      ${isDone&&!isActive?`<div style="padding:5px 16px 10px;display:flex;gap:6px;flex-wrap:wrap">
+        ${sets.map((s,si)=>`<span style="font-size:12px;background:#e8f8ef;color:#1e8449;padding:3px 10px;border-radius:20px">S${si+1}: ${s.weight}kg × ${s.reps}</span>`).join("")}
+      </div>`:""}
+    </div>`;
+  }).join("");
+
+  document.getElementById("root").innerHTML=`
+    <div style="background:${day.color};padding:calc(env(safe-area-inset-top)+18px) 20px 22px;color:#fff;position:sticky;top:0;z-index:5">
+      <div style="font-size:13px;opacity:0.8">${day.day} antrenmanı</div>
+      <div style="font-size:26px;font-weight:800">${day.icon} ${day.label}</div>
+      <div style="font-size:13px;opacity:0.75;margin-bottom:14px">${day.subtitle}</div>
+      <div style="background:rgba(255,255,255,0.25);border-radius:10px;height:8px">
+        <div style="height:8px;border-radius:10px;background:#fff;width:${pct}%;transition:width 0.4s ease"></div>
+      </div>
+      <div style="margin-top:6px;font-size:13px;opacity:0.9">${doneCount}/${day.exercises.length} egzersiz</div>
+    </div>
+    <div class="safe-bottom" style="padding:14px 14px 0">
+      ${cards}
+      <button id="goto-cooldown" ${doneCount===0?"disabled":""} style="width:100%;padding:16px;margin-top:8px;background:${doneCount>0?day.color:"#ccc"};color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700">
+        Soğumaya Geç (${doneCount}/${day.exercises.length}) →
+      </button>
+    </div>
+    ${renderNav("workout")}
+  `;
+
+  document.querySelectorAll(".ex-header").forEach(el=>{
+    el.addEventListener("click",()=>{
+      const i=parseInt(el.dataset.idx);
+      workoutState.activeEx=workoutState.activeEx===i?-1:i;
+      renderTraining();
+    });
+  });
+  document.querySelectorAll("input[data-exidx]").forEach(inp=>{
+    inp.addEventListener("input",e=>{
+      const ei=parseInt(inp.dataset.exidx),si=parseInt(inp.dataset.setidx),f=inp.dataset.field;
+      workoutState.sets[ei][si][f]=inp.value;
+    });
+  });
+  document.querySelectorAll(".complete-btn").forEach(btn=>{
+    if(!btn.disabled)btn.addEventListener("click",()=>{
+      const i=parseInt(btn.dataset.idx);
+      const ex=day.exercises[i];
+      const maxW=Math.max(...workoutState.sets[i].map(s=>parseFloat(s.weight)||0));
+      if(maxW>(workoutState.prs[ex.id]||0)){
+        workoutState.prs[ex.id]=maxW;
+        workoutState.newPRs.push(`${ex.name} — ${maxW}kg`);
+      }
+      workoutState.completed[i]=true;
+      if(i<day.exercises.length-1)workoutState.activeEx=i+1;
+      renderTraining();
+      setTimeout(()=>startTimer(ex.rest,()=>{}),100);
+    });
+  });
+  const coolBtn=$("goto-cooldown");
+  if(coolBtn&&doneCount>0)coolBtn.addEventListener("click",()=>{workoutState.phase="cooldown";renderCooldown();});
+}
+
+function renderCooldown(){
+  const day=PROGRAM[workoutState.dayKey];
+  const steps=COOLDOWN_STEPS[workoutState.dayKey];
+  const done=workoutState.cooldownDone;
+  document.getElementById("root").innerHTML=`
+    <div style="background:#2e6da4;padding:calc(env(safe-area-inset-top)+20px) 20px 24px;color:#fff">
+      <div style="font-size:13px;opacity:0.8">${day.label} · Antrenman Bitti ✓</div>
+      <div style="font-size:24px;font-weight:800">❄️ Soğuma</div>
+      <div style="font-size:13px;opacity:0.8">~6 dakika</div>
+    </div>
+    <div class="safe-bottom" style="padding:20px 16px">
+      ${workoutState.newPRs.length>0?`
+        <div style="background:#fff9f0;border:2px solid #f39c12;border-radius:16px;padding:16px;margin-bottom:16px">
+          <div style="font-weight:700;color:#e67e22;margin-bottom:6px">🏆 Yeni Kişisel Rekor!</div>
+          ${workoutState.newPRs.map(n=>`<div style="font-size:14px;color:#555;margin-top:3px">${n}</div>`).join("")}
+        </div>`:""}
+      ${steps.map((s,i)=>`
+        <div class="cool-step" data-idx="${i}" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;border:2px solid ${done[i]?"#27ae60":"#d6eaf8"};opacity:${done[i]?0.65:1}">
+          <div style="width:30px;height:30px;border-radius:50%;background:${done[i]?"#27ae60":"#2e6da4"};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0">${done[i]?"✓":i+1}</div>
+          <span style="font-size:14px;color:#444;text-decoration:${done[i]?"line-through":"none"}">${s}</span>
+        </div>`).join("")}
+      <button id="finish-btn" style="width:100%;margin-top:12px;padding:16px;background:#1a3a5c;color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700">
+        Antrenmanı Bitir 🎉
+      </button>
+    </div>
+    ${renderNav("workout")}
+  `;
+  document.querySelectorAll(".cool-step").forEach(el=>{
+    el.addEventListener("click",()=>{
+      const i=parseInt(el.dataset.idx);
+      workoutState.cooldownDone[i]=!workoutState.cooldownDone[i];
+      renderCooldown();
+    });
+  });
+  $("finish-btn").addEventListener("click",()=>{
+    finishWorkout();
+  });
+}
+
+function finishWorkout(){
+  const day=PROGRAM[workoutState.dayKey];
+  const newHistory={...appData.history};
+  day.exercises.forEach((ex,i)=>{
+    if(workoutState.completed[i]){
+      if(!newHistory[ex.id])newHistory[ex.id]=[];
+      newHistory[ex.id].push({date:new Date().toISOString(),sets:workoutState.sets[i]});
+      if(newHistory[ex.id].length>30)newHistory[ex.id].shift();
+    }
+  });
+  const sessionData={date:new Date().toISOString(),dayKey:workoutState.dayKey,
+    completedCount:workoutState.completed.filter(Boolean).length,totalCount:day.exercises.length};
+  appData={history:newHistory,sessions:[...(appData.sessions||[]).slice(-99),sessionData],prs:workoutState.prs};
+  saveData(appData);
+  celebratePRs=workoutState.newPRs;
+  renderDone();
+}
+
+function renderDone(){
+  document.getElementById("root").innerHTML=`
+    <div style="min-height:100vh;background:#f7f8fa;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
+      <div style="font-size:80px;animation:bounce 0.5s ease 3">🎉</div>
+      <div style="font-size:30px;font-weight:900;margin-top:16px;color:#1a3a5c">Harika iş!</div>
+      <div style="font-size:15px;color:#999;margin-top:6px">Antrenman başarıyla tamamlandı</div>
+      ${celebratePRs.length>0?`
+        <div style="background:#fff9f0;border:2px solid #f39c12;border-radius:16px;padding:16px;margin-top:20px;width:100%;max-width:320px">
+          <div style="font-weight:700;color:#e67e22;margin-bottom:8px">🏆 Yeni Kişisel Rekor!</div>
+          ${celebratePRs.map(n=>`<div style="font-size:14px;color:#555;margin-top:4px">${n}</div>`).join("")}
+        </div>`:""}
+      <button onclick="currentScreen='home';renderHome()" style="margin-top:28px;background:#1a3a5c;color:#fff;border:none;border-radius:14px;padding:16px 40px;font-size:17px;font-weight:700;width:100%;max-width:320px">
+        Ana Sayfaya Dön
+      </button>
+    </div>
+  `;
+}
+
+// ─── PROGRESS ─────────────────────────────────────────────────────────────────
+const KEY_EX={
+  push:["bench","incline_db","pec_deck","db_shoulder","pushdown"],
+  pull:["lat_pulldown","cable_row","hammer_row","rope_pullover","barbell_curl"],
+  legs:["squat","leg_press","rdl","leg_curl","hip_thrust_machine"],
+  optional:["ohp","plank"],
+};
+
+function renderProgress(){
+  const sel=window._progSel||"push";
+  const day=PROGRAM[sel];
+  const allEx=Object.values(PROGRAM).flatMap(d=>d.exercises);
+
+  const tabsHTML=Object.entries(PROGRAM).map(([k,v])=>`
+    <button class="prog-tab" data-key="${k}" style="padding:8px 14px;border-radius:20px;border:none;background:${sel===k?v.color:"#f0f0f0"};color:${sel===k?"#fff":"#555"};font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">
+      ${v.icon} ${v.label}
+    </button>`).join("");
+
+  const lastWeightsHTML=day.exercises.map((ex,i)=>{
+    const lw=getLastWeight(appData.history,ex.id);
+    const ls=getLastSets(appData.history,ex.id);
+    const pr=appData.prs?.[ex.id];
+    return `<div class="ex-detail-toggle" data-id="${ex.id}" style="padding:12px 16px;border-bottom:${i<day.exercises.length-1?"1px solid #f5f5f5":"none"};display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#222">${ex.name}</div>
+        ${window._openEx===ex.id&&ls?`<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          ${ls.map((s,si)=>`<span style="font-size:11px;background:#e8f0fe;color:#1a6b9a;padding:2px 8px;border-radius:12px">S${si+1}: ${s.weight}kg×${s.reps}</span>`).join("")}
+        </div>`:""}
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:12px">
+        ${lw?`<div style="font-size:18px;font-weight:800;color:${day.color}">${lw}kg</div>
+        ${pr&&pr===lw?'<div style="font-size:10px;color:#e67e22">🏆 PR</div>':""}`:
+        '<div style="font-size:12px;color:#ccc">Kayıt yok</div>'}
+      </div>
+    </div>`;
+  }).join("");
+
+  const prHTML=Object.entries(appData.prs||{}).length===0
+    ?'<div style="color:#bbb;font-size:13px;text-align:center;padding:12px 0">Henüz PR yok — antrenman yaptıkça burada görünecek!</div>'
+    :Object.entries(appData.prs||{}).map(([id,pr])=>{
+      const ex=allEx.find(e=>e.id===id);
+      if(!ex)return"";
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5f5f5">
+        <span style="font-size:14px;color:#333">${ex.name}</span>
+        <span style="font-weight:800;font-size:16px;color:#e67e22">${pr} kg 🏆</span>
+      </div>`;
+    }).join("");
+
+  document.getElementById("root").innerHTML=`
+    <div style="padding:calc(env(safe-area-inset-top)+16px) 16px 0">
+      <div style="font-weight:800;font-size:22px;margin-bottom:2px">📈 Gelişim</div>
+      <div style="color:#999;font-size:14px;margin-bottom:16px">Son ağırlıklar · PRlar</div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 16px 16px;overflow-x:auto">${tabsHTML}</div>
+    <div style="padding:0 16px 80px">
+      <div style="background:#fff;border-radius:14px;overflow:hidden;margin-bottom:12px">
+        <div style="padding:12px 16px;background:${day.color};color:#fff;font-weight:700;font-size:13px">Son Kaydedilen Ağırlıklar</div>
+        ${lastWeightsHTML}
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:16px;margin-bottom:12px">🏆 Kişisel Rekorlar</div>
+        ${prHTML}
+      </div>
+    </div>
+    ${renderNav("progress")}
+  `;
+  document.querySelectorAll(".prog-tab").forEach(el=>{
+    el.addEventListener("click",()=>{window._progSel=el.dataset.key;window._openEx=null;renderProgress();});
+  });
+  document.querySelectorAll(".ex-detail-toggle").forEach(el=>{
+    el.addEventListener("click",()=>{
+      window._openEx=window._openEx===el.dataset.id?null:el.dataset.id;
+      renderProgress();
+    });
+  });
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────────────────────
+function renderHistory(){
+  const sessions=[...(appData.sessions||[])].reverse();
+  const grouped={};
+  sessions.forEach(s=>{const d=fmtDate(s.date);if(!grouped[d])grouped[d]=[];grouped[d].push(s);});
+
+  const html=Object.keys(grouped).length===0
+    ?'<div style="text-align:center;padding:48px;color:#bbb"><div style="font-size:52px;margin-bottom:12px">🏋️</div><div style="font-size:16px">Henüz kayıt yok</div></div>'
+    :Object.entries(grouped).map(([date,list])=>`
+      <div style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:12px;color:#bbb;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">${date}</div>
+        ${list.map(s=>{const d=PROGRAM[s.dayKey];return`
+          <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:8px;border-left:4px solid ${d?.color||"#ccc"}">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:700;font-size:16px">${d?.icon} ${d?.label}</div>
+                <div style="font-size:12px;color:#999">${d?.subtitle}</div>
+              </div>
+              <div style="background:${s.completedCount===s.totalCount?"#e8f8ef":"#fef9e7"};color:${s.completedCount===s.totalCount?"#27ae60":"#e67e22"};padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">
+                ${s.completedCount}/${s.totalCount}
+              </div>
+            </div>
+          </div>`;}).join("")}
+      </div>`).join("");
+
+  document.getElementById("root").innerHTML=`
+    <div style="padding:calc(env(safe-area-inset-top)+16px) 16px 0">
+      <div style="font-weight:800;font-size:22px;margin-bottom:2px">📋 Geçmiş</div>
+      <div style="color:#999;font-size:14px;margin-bottom:18px">${appData.sessions?.length||0} antrenman kaydı</div>
+    </div>
+    <div class="safe-bottom" style="padding:0 16px">${html}</div>
+    ${renderNav("history")}
+  `;
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function renderNav(active){
+  const tabs=[{id:"home",icon:"🏠",label:"Ana Sayfa"},{id:"progress",icon:"📈",label:"Gelişim"},{id:"history",icon:"📋",label:"Geçmiş"}];
+  return `<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #f0f0f0;display:flex;padding:8px 0;padding-bottom:calc(8px + env(safe-area-inset-bottom));z-index:20">
+    ${tabs.map(t=>`<div class="nav-btn" data-id="${t.id}" style="flex:1;text-align:center;cursor:pointer">
+      <div style="font-size:24px">${t.icon}</div>
+      <div style="font-size:11px;color:${active===t.id?"#2e6da4":"#bbb"};font-weight:${active===t.id?700:400}">${t.label}</div>
+    </div>`).join("")}
+  </div>`;
+}
+
+function bindEvents(){
+  document.querySelectorAll(".nav-btn").forEach(el=>{
+    el.addEventListener("click",()=>{
+      currentScreen=el.dataset.id;
+      if(currentScreen==="home")renderHome();
+      else if(currentScreen==="progress")renderProgress();
+      else if(currentScreen==="history")renderHistory();
+    });
+  });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+if("serviceWorker"in navigator){
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
+renderHome();
+</script>
+</body>
+</html>
